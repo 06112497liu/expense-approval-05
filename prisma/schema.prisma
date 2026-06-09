@@ -7,41 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  EMPLOYEE
-  MANAGER
-  FINANCE
-}
-
-enum ExpenseStatus {
-  DRAFT
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum ApprovalRole {
-  MANAGER
-  FINANCE
-  CUSTOM
-}
-
 model Department {
   id        Int      @id @default(autoincrement())
-  name      String
-  managerId Int?
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  manager    User?  @relation("ManagedDepartment", fields: [managerId], references: [id])
-  employees  User[] @relation("DepartmentUsers")
+  employees  User[]
 }
 
 model User {
@@ -49,43 +21,40 @@ model User {
   email         String   @unique
   name          String
   passwordHash  String
-  role          Role
+  role          String
   departmentId  Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  department           Department?         @relation("DepartmentUsers", fields: [departmentId], references: [id])
-  managedDepartment    Department?         @relation("ManagedDepartment")
+  department           Department?         @relation(fields: [departmentId], references: [id])
   submittedExpenses    ExpenseReport[]     @relation("ExpenseCreator")
   approvals            Approval[]          @relation("ApprovalApprover")
-  approvalFlows        ApprovalFlow[]      @relation("FlowApprover")
   currentApprovals     ExpenseReport[]     @relation("CurrentApprover")
 }
 
 model ExpenseReport {
-  id                Int              @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   title             String
   description       String
-  totalAmount       Decimal          @db.Decimal(10, 2)
-  status            ExpenseStatus    @default(DRAFT)
+  totalAmount       Float
+  status            String   @default("DRAFT")
   creatorId         Int
   currentApproverId Int?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   submittedAt       DateTime?
 
-  creator          User             @relation("ExpenseCreator", fields: [creatorId], references: [id])
-  currentApprover  User?            @relation("CurrentApprover", fields: [currentApproverId], references: [id])
+  creator          User          @relation("ExpenseCreator", fields: [creatorId], references: [id])
+  currentApprover  User?         @relation("CurrentApprover", fields: [currentApproverId], references: [id])
   items            ExpenseItem[]
   approvals        Approval[]
-  approvalFlows    ApprovalFlow[]
 }
 
 model ExpenseItem {
   id          Int      @id @default(autoincrement())
   reportId    Int
   category    String
-  amount      Decimal  @db.Decimal(10, 2)
+  amount      Float
   description String
   receiptUrl  String?
   date        DateTime
@@ -96,30 +65,17 @@ model ExpenseItem {
 }
 
 model Approval {
-  id          Int             @id @default(autoincrement())
-  reportId    Int
-  approverId  Int
-  stepNumber  Int
-  role        ApprovalRole
-  status      ApprovalStatus  @default(PENDING)
-  comment     String?
-  approvedAt  DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  report    ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  approver  User          @relation("ApprovalApprover", fields: [approverId], references: [id])
-}
-
-model ApprovalFlow {
   id          Int      @id @default(autoincrement())
   reportId    Int
   approverId  Int
   stepNumber  Int
-  role        ApprovalRole
+  role        String
+  status      String   @default("PENDING")
+  comment     String?
+  approvedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   report    ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  approver  User          @relation("FlowApprover", fields: [approverId], references: [id])
+  approver  User          @relation("ApprovalApprover", fields: [approverId], references: [id])
 }
