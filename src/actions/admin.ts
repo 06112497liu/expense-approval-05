@@ -99,11 +99,18 @@ export async function deleteUser(userId: number) {
     throw new Error('用户不存在')
   }
 
-  const hasNonDraftExpenses = targetUser.submittedExpenses.some(
-    (e) => e.status !== 'DRAFT'
+  const hasPendingExpenses = targetUser.submittedExpenses.some(
+    (e) => e.status === 'PENDING'
   )
-  if (hasNonDraftExpenses) {
-    throw new Error('该用户有已提交的报销单，无法删除')
+  if (hasPendingExpenses) {
+    throw new Error('该用户有待审批的报销单，无法删除')
+  }
+
+  const hasPendingApprovals = targetUser.approvals.some(
+    (a) => a.status === 'PENDING'
+  )
+  if (hasPendingApprovals) {
+    throw new Error('该用户有待处理的审批任务，无法删除')
   }
 
   await prisma.$transaction([
@@ -115,7 +122,7 @@ export async function deleteUser(userId: number) {
       data: { currentApproverId: null },
     }),
     prisma.expenseReport.deleteMany({
-      where: { creatorId: userId, status: 'DRAFT' },
+      where: { creatorId: userId },
     }),
   ])
 
