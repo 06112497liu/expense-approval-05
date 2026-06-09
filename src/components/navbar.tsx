@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import {
   FileText,
   CheckSquare,
@@ -16,71 +16,83 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface NavbarProps {
-  user: {
-    id: string
-    email: string
-    name: string
-    role: 'ADMIN' | 'EMPLOYEE' | 'MANAGER' | 'FINANCE'
-    departmentId: number | null
-    departmentName: string | null
-  }
+interface NavbarUser {
+  id: string
+  email: string
+  name: string
+  role: 'ADMIN' | 'EMPLOYEE' | 'MANAGER' | 'FINANCE'
+  departmentId: number | null
+  departmentName: string | null
 }
 
-export function Navbar({ user }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname()
-  const router = useRouter()
+  const { data: session, status } = useSession()
+
+  const user = (session?.user as NavbarUser) || null
+  const isLoading = status === 'loading'
 
   const handleSignOut = async () => {
     await signOut({ redirect: false })
-    router.refresh()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
-  const navItems = [
-    {
-      href: '/',
-      label: '首页',
-      icon: LayoutDashboard,
-      show: true,
-    },
-    {
-      href: '/expenses',
-      label: '我的报销单',
-      icon: FileText,
-      show: true,
-    },
-    {
-      href: '/expenses/new',
-      label: '新建报销',
-      icon: PlusCircle,
-      show: user.role === 'EMPLOYEE' || user.role === 'MANAGER' || user.role === 'FINANCE',
-    },
-    {
-      href: '/approvals',
-      label: '待我审批',
-      icon: CheckSquare,
-      show: user.role === 'MANAGER' || user.role === 'FINANCE' || user.role === 'ADMIN',
-    },
-    {
-      href: '/history',
-      label: '提交历史',
-      icon: History,
-      show: true,
-    },
-    {
-      href: '/admin/users',
-      label: '用户管理',
-      icon: Users,
-      show: user.role === 'ADMIN',
-    },
-    {
-      href: '/admin/departments',
-      label: '部门管理',
-      icon: Building2,
-      show: user.role === 'ADMIN',
-    },
-  ]
+  if (!user && !isLoading) {
+    return null
+  }
+
+  const navItems = user
+    ? [
+        {
+          href: '/',
+          label: '首页',
+          icon: LayoutDashboard,
+          show: true,
+        },
+        {
+          href: '/expenses',
+          label: '我的报销单',
+          icon: FileText,
+          show: true,
+        },
+        {
+          href: '/expenses/new',
+          label: '新建报销',
+          icon: PlusCircle,
+          show:
+            user.role === 'EMPLOYEE' ||
+            user.role === 'MANAGER' ||
+            user.role === 'FINANCE',
+        },
+        {
+          href: '/approvals',
+          label: '待我审批',
+          icon: CheckSquare,
+          show:
+            user.role === 'MANAGER' ||
+            user.role === 'FINANCE' ||
+            user.role === 'ADMIN',
+        },
+        {
+          href: '/history',
+          label: '提交历史',
+          icon: History,
+          show: true,
+        },
+        {
+          href: '/admin/users',
+          label: '用户管理',
+          icon: Users,
+          show: user.role === 'ADMIN',
+        },
+        {
+          href: '/admin/departments',
+          label: '部门管理',
+          icon: Building2,
+          show: user.role === 'ADMIN',
+        },
+      ]
+    : []
 
   const roleLabel: Record<string, string> = {
     ADMIN: '管理员',
@@ -127,27 +139,29 @@ export function Navbar({ user }: NavbarProps) {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="hidden sm:block text-sm">
-                <div className="font-medium text-gray-900">{user.name}</div>
-                <div className="text-xs text-gray-500">
-                  {roleLabel[user.role]}
-                  {user.departmentName ? ` · ${user.departmentName}` : ''}
+          {user && (
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="hidden sm:block text-sm">
+                  <div className="font-medium text-gray-900">{user.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {roleLabel[user.role]}
+                    {user.departmentName ? ` · ${user.departmentName}` : ''}
+                  </div>
                 </div>
               </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">退出</span>
+              </button>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">退出</span>
-            </button>
-          </div>
+          )}
         </div>
 
         <div className="md:hidden flex overflow-x-auto pb-2 space-x-1">

@@ -56,7 +56,7 @@ export default async function RootLayout({
         <Providers>
           {showNavbar ? (
             <div className="min-h-screen bg-gray-50">
-              <Navbar user={user} />
+              <Navbar />
               <main className="container mx-auto py-6 px-4">{children}</main>
             </div>
           ) : (
