@@ -40,6 +40,7 @@ interface Department {
 interface UserManagementProps {
   initialUsers: User[]
   initialDepartments: Department[]
+  mode?: 'users' | 'departments' | 'both'
 }
 
 const ROLES = [
@@ -52,6 +53,7 @@ const ROLES = [
 export function UserManagement({
   initialUsers,
   initialDepartments,
+  mode = 'both',
 }: UserManagementProps) {
   const router = useRouter()
   const [users, setUsers] = useState<User[]>(initialUsers)
@@ -61,6 +63,12 @@ export function UserManagement({
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [showDeptModal, setShowDeptModal] = useState(false)
   const [editingDept, setEditingDept] = useState<Department | null>(null)
+
+  const [showDeleteUserConfirm, setShowDeleteUserConfirm] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [showDeleteDeptConfirm, setShowDeleteDeptConfirm] = useState(false)
+  const [deletingDept, setDeletingDept] = useState<Department | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const [userForm, setUserForm] = useState({
     email: '',
@@ -72,6 +80,9 @@ export function UserManagement({
   const [deptForm, setDeptForm] = useState({ name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const showUsers = mode === 'users' || mode === 'both'
+  const showDepartments = mode === 'departments' || mode === 'both'
 
   const openCreateUser = () => {
     setEditingUser(null)
@@ -145,13 +156,23 @@ export function UserManagement({
     }
   }
 
-  const handleDeleteUser = async (user: User) => {
-    if (!confirm(`确定要删除用户 ${user.name} 吗？`)) return
+  const handleDeleteUser = (user: User) => {
+    setDeletingUser(user)
+    setShowDeleteUserConfirm(true)
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!deletingUser) return
+    setDeleteLoading(true)
     try {
-      await deleteUser(user.id)
+      await deleteUser(deletingUser.id)
+      setShowDeleteUserConfirm(false)
+      setDeletingUser(null)
       router.refresh()
     } catch (err: any) {
       alert(err.message || '删除失败')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -175,160 +196,174 @@ export function UserManagement({
     }
   }
 
-  const handleDeleteDept = async (dept: Department) => {
-    if (!confirm(`确定要删除部门 ${dept.name} 吗？`)) return
+  const handleDeleteDept = (dept: Department) => {
+    setDeletingDept(dept)
+    setShowDeleteDeptConfirm(true)
+  }
+
+  const confirmDeleteDept = async () => {
+    if (!deletingDept) return
+    setDeleteLoading(true)
     try {
-      await deleteDepartment(dept.id)
+      await deleteDepartment(deletingDept.id)
+      setShowDeleteDeptConfirm(false)
+      setDeletingDept(null)
       router.refresh()
     } catch (err: any) {
       alert(err.message || '删除失败')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
-            <h2 className="font-semibold text-gray-900">用户管理</h2>
+      {showUsers && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <UserPlus className="h-5 w-5 text-blue-600" />
+              <h2 className="font-semibold text-gray-900">用户管理</h2>
+            </div>
+            <button
+              onClick={openCreateUser}
+              className="inline-flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>添加用户</span>
+            </button>
           </div>
-          <button
-            onClick={openCreateUser}
-            className="inline-flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span>添加用户</span>
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  姓名
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  邮箱
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  角色
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  部门
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  创建时间
-                </th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-900">
-                    {user.name}
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">
-                    {user.email}
-                  </td>
-                  <td className="px-5 py-4 text-sm">
-                    <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                      {getRoleText(user.role)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">
-                    {user.department?.name || '-'}
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">
-                    {formatDate(user.createdAt)}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="inline-flex items-center space-x-2">
-                      <button
-                        onClick={() => openEditUser(user)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    姓名
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    邮箱
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    角色
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    部门
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    创建时间
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    操作
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-4 text-sm font-medium text-gray-900">
+                      {user.name}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">
+                      {user.email}
+                    </td>
+                    <td className="px-5 py-4 text-sm">
+                      <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                        {getRoleText(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">
+                      {user.department?.name || '-'}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">
+                      {formatDate(user.createdAt)}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="inline-flex items-center space-x-2">
+                        <button
+                          onClick={() => openEditUser(user)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            <h2 className="font-semibold text-gray-900">部门管理</h2>
+      {showDepartments && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              <h2 className="font-semibold text-gray-900">部门管理</h2>
+            </div>
+            <button
+              onClick={openCreateDept}
+              className="inline-flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>添加部门</span>
+            </button>
           </div>
-          <button
-            onClick={openCreateDept}
-            className="inline-flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span>添加部门</span>
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  部门名称
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  成员数
-                </th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {departments.map((dept) => (
-                <tr key={dept.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-900">
-                    {dept.name}
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">
-                    {dept.employees.length} 人
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="inline-flex items-center space-x-2">
-                      <button
-                        onClick={() => openEditDept(dept)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDept(dept)}
-                        disabled={dept.employees.length > 0}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    部门名称
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    成员数
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase">
+                    操作
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {departments.map((dept) => (
+                  <tr key={dept.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-4 text-sm font-medium text-gray-900">
+                      {dept.name}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">
+                      {dept.employees.length} 人
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="inline-flex items-center space-x-2">
+                        <button
+                          onClick={() => openEditDept(dept)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDept(dept)}
+                          disabled={dept.employees.length > 0}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {showUserModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -515,6 +550,80 @@ export function UserManagement({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteUserConfirm && deletingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="p-5">
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">
+                确认删除
+              </h3>
+              <p className="text-sm text-gray-600">
+                确定要删除用户 <span className="font-medium">{deletingUser.name}</span> 吗？此操作无法撤销。
+              </p>
+            </div>
+            <div className="flex items-center justify-end space-x-3 p-5 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteUserConfirm(false)
+                  setDeletingUser(null)
+                }}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-100 font-medium transition-colors disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={deleteLoading}
+                className="inline-flex items-center space-x-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
+              >
+                {deleteLoading && <Loader2 className="animate-spin h-4 w-4" />}
+                <span>{deleteLoading ? '删除中...' : '确认删除'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteDeptConfirm && deletingDept && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="p-5">
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">
+                确认删除
+              </h3>
+              <p className="text-sm text-gray-600">
+                确定要删除部门 <span className="font-medium">{deletingDept.name}</span> 吗？此操作无法撤销。
+              </p>
+            </div>
+            <div className="flex items-center justify-end space-x-3 p-5 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteDeptConfirm(false)
+                  setDeletingDept(null)
+                }}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-100 font-medium transition-colors disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteDept}
+                disabled={deleteLoading}
+                className="inline-flex items-center space-x-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
+              >
+                {deleteLoading && <Loader2 className="animate-spin h-4 w-4" />}
+                <span>{deleteLoading ? '删除中...' : '确认删除'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

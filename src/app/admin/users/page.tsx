@@ -12,12 +12,12 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">系统管理</h1>
+        <h1 className="text-2xl font-bold text-gray-900">用户管理</h1>
         <p className="mt-1 text-sm text-gray-500">
-          管理系统用户和部门信息
+          管理系统用户账号和权限
         </p>
       </div>
-      <UserManagement initialUsers={users as any} initialDepartments={departments as any} />
+      <UserManagement initialUsers={users as any} initialDepartments={departments as any} mode="users" />
     </div>
   )
 }

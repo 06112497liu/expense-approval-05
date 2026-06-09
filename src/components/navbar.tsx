@@ -33,6 +33,7 @@ export function Navbar({ user }: NavbarProps) {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false })
+    router.refresh()
     router.push('/login')
   }
 
