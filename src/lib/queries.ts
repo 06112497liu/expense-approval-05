@@ -16,6 +16,7 @@ export async function getUserExpenseReports(userId: number, includeHistory = fal
     include: {
       creator: true,
       currentApprover: true,
+      items: true,
       approvals: {
         include: {
           approver: true,
@@ -46,6 +47,7 @@ export async function getPendingApprovalsForUser(
           },
         },
         currentApprover: true,
+        items: true,
         approvals: {
           include: {
             approver: true,
@@ -77,6 +79,7 @@ export async function getPendingApprovalsForUser(
           },
         },
         currentApprover: true,
+        items: true,
         approvals: {
           include: {
             approver: true,
@@ -105,6 +108,7 @@ export async function getPendingApprovalsForUser(
           },
         },
         currentApprover: true,
+        items: true,
         approvals: {
           include: {
             approver: true,
@@ -132,6 +136,7 @@ export async function getAllExpenseReports() {
         },
       },
       currentApprover: true,
+      items: true,
       approvals: {
         include: {
           approver: true,

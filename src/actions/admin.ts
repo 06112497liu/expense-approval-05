@@ -86,6 +86,39 @@ export async function deleteUser(userId: number) {
     throw new Error('不能删除自己')
   }
 
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      submittedExpenses: true,
+      approvals: true,
+      currentApprovals: true,
+    },
+  })
+
+  if (!targetUser) {
+    throw new Error('用户不存在')
+  }
+
+  const hasNonDraftExpenses = targetUser.submittedExpenses.some(
+    (e) => e.status !== 'DRAFT'
+  )
+  if (hasNonDraftExpenses) {
+    throw new Error('该用户有已提交的报销单，无法删除')
+  }
+
+  await prisma.$transaction([
+    prisma.approval.deleteMany({
+      where: { approverId: userId },
+    }),
+    prisma.expenseReport.updateMany({
+      where: { currentApproverId: userId },
+      data: { currentApproverId: null },
+    }),
+    prisma.expenseReport.deleteMany({
+      where: { creatorId: userId, status: 'DRAFT' },
+    }),
+  ])
+
   await prisma.user.delete({
     where: { id: userId },
   })

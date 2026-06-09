@@ -84,21 +84,33 @@ export async function updateExpenseReport(
     where: { reportId },
   })
 
+  const updateData: any = {
+    title: data.title,
+    description: data.description,
+    totalAmount,
+    items: {
+      create: data.items.map((item) => ({
+        category: item.category,
+        amount: item.amount,
+        description: item.description,
+        date: new Date(item.date),
+      })),
+    },
+  }
+
+  if (report.status === 'REJECTED') {
+    updateData.status = 'DRAFT'
+    updateData.submittedAt = null
+    updateData.currentApproverId = null
+
+    await prisma.approval.deleteMany({
+      where: { reportId },
+    })
+  }
+
   await prisma.expenseReport.update({
     where: { id: reportId },
-    data: {
-      title: data.title,
-      description: data.description,
-      totalAmount,
-      items: {
-        create: data.items.map((item) => ({
-          category: item.category,
-          amount: item.amount,
-          description: item.description,
-          date: new Date(item.date),
-        })),
-      },
-    },
+    data: updateData,
   })
 
   revalidatePath('/')

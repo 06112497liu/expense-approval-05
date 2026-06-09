@@ -53,6 +53,7 @@ export function ExpenseForm({ mode, initialData }: ExpenseFormProps) {
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const totalAmount = items.reduce((sum, item) => sum + (item.amount || 0), 0)
 
@@ -147,16 +148,20 @@ export function ExpenseForm({ mode, initialData }: ExpenseFormProps) {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!initialData) return
-    if (!confirm('确定要删除这个草稿报销单吗？')) return
+    setShowDeleteConfirm(true)
+  }
 
+  const handleConfirmDelete = async () => {
+    if (!initialData) return
     setDeleting(true)
     try {
       await deleteExpenseReport(initialData.id)
     } catch (err: any) {
       setError(err.message || '删除失败')
       setDeleting(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -386,6 +391,40 @@ export function ExpenseForm({ mode, initialData }: ExpenseFormProps) {
           )}
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="p-5">
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">
+                确认删除
+              </h3>
+              <p className="text-sm text-gray-600">
+                确定要删除这个草稿报销单吗？此操作无法撤销。
+              </p>
+            </div>
+            <div className="flex items-center justify-end space-x-3 p-5 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-gray-600 rounded-lg hover:bg-gray-100 font-medium transition-colors disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="inline-flex items-center space-x-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
+              >
+                {deleting && <Loader2 className="animate-spin h-4 w-4" />}
+                <span>{deleting ? '删除中...' : '确认删除'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
