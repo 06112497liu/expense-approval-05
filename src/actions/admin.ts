@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/permissions'
+import { getAllBudgetTransactions } from '@/lib/queries'
 import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -220,4 +221,72 @@ export async function getAllDepartments() {
       id: 'asc',
     },
   })
+}
+
+export async function setDepartmentBudget(
+  departmentId: number,
+  yearMonth: string,
+  budgetAmount: number
+) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'ADMIN') {
+    throw new Error('无权限')
+  }
+
+  if (budgetAmount < 0) {
+    throw new Error('预算额度不能为负数')
+  }
+
+  const dept = await prisma.department.findUnique({
+    where: { id: departmentId },
+  })
+  if (!dept) {
+    throw new Error('部门不存在')
+  }
+
+  await prisma.departmentBudget.upsert({
+    where: {
+      departmentId_yearMonth: {
+        departmentId,
+        yearMonth,
+      },
+    },
+    update: {
+      budgetAmount,
+    },
+    create: {
+      departmentId,
+      yearMonth,
+      budgetAmount,
+      usedAmount: 0,
+    },
+  })
+
+  revalidatePath('/admin/budgets')
+  revalidatePath('/admin/departments')
+}
+
+export async function getAllBudgetsWithDetails() {
+  return prisma.departmentBudget.findMany({
+    include: {
+      department: true,
+    },
+    orderBy: {
+      yearMonth: 'desc',
+    },
+  })
+}
+
+export async function getBudgetTransactions(
+  options?: {
+    departmentId?: number
+    yearMonth?: string
+  }
+) {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'FINANCE')) {
+    throw new Error('无权限')
+  }
+
+  return getAllBudgetTransactions(options)
 }

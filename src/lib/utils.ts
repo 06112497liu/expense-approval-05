@@ -52,3 +52,23 @@ export function getRoleText(role: string): string {
   }
   return map[role] || role
 }
+
+export function getCurrentYearMonth(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+export function formatYearMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-')
+  return `${year}年${parseInt(month)}月`
+}
+
+export function getBudgetTypeText(type: string): string {
+  const map: Record<string, string> = {
+    DEDUCT: '预算扣除',
+    REFUND: '预算退回',
+  }
+  return map[type] || type
+}

@@ -195,3 +195,108 @@ export async function getFinanceUser() {
     },
   })
 }
+
+export async function getOrCreateDepartmentBudget(
+  departmentId: number,
+  yearMonth: string
+) {
+  let budget = await prisma.departmentBudget.findUnique({
+    where: {
+      departmentId_yearMonth: {
+        departmentId,
+        yearMonth,
+      },
+    },
+  })
+
+  if (!budget) {
+    budget = await prisma.departmentBudget.create({
+      data: {
+        departmentId,
+        yearMonth,
+        budgetAmount: 0,
+        usedAmount: 0,
+      },
+    })
+  }
+
+  return budget
+}
+
+export async function getDepartmentBudgetsByMonth(yearMonth: string) {
+  return prisma.departmentBudget.findMany({
+    where: { yearMonth },
+    include: {
+      department: true,
+    },
+    orderBy: {
+      departmentId: 'asc',
+    },
+  })
+}
+
+export async function getDepartmentBudgetWithTransactions(
+  departmentId: number,
+  yearMonth: string
+) {
+  return prisma.departmentBudget.findUnique({
+    where: {
+      departmentId_yearMonth: {
+        departmentId,
+        yearMonth,
+      },
+    },
+    include: {
+      department: true,
+      transactions: {
+        include: {
+          report: {
+            include: {
+              creator: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+    },
+  })
+}
+
+export async function getAllBudgetTransactions(
+  options?: {
+    departmentId?: number
+    yearMonth?: string
+  }
+) {
+  const where: any = {}
+  if (options?.departmentId || options?.yearMonth) {
+    where.departmentBudget = {}
+    if (options.departmentId) {
+      where.departmentBudget.departmentId = options.departmentId
+    }
+    if (options.yearMonth) {
+      where.departmentBudget.yearMonth = options.yearMonth
+    }
+  }
+
+  return prisma.budgetTransaction.findMany({
+    where,
+    include: {
+      departmentBudget: {
+        include: {
+          department: true,
+        },
+      },
+      report: {
+        include: {
+          creator: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+}

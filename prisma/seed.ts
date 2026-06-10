@@ -101,6 +101,57 @@ async function main() {
     },
   })
 
+  const now = new Date()
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  await prisma.departmentBudget.upsert({
+    where: {
+      departmentId_yearMonth: {
+        departmentId: techDept.id,
+        yearMonth: currentYearMonth,
+      },
+    },
+    update: {},
+    create: {
+      departmentId: techDept.id,
+      yearMonth: currentYearMonth,
+      budgetAmount: 50000,
+      usedAmount: 0,
+    },
+  })
+
+  await prisma.departmentBudget.upsert({
+    where: {
+      departmentId_yearMonth: {
+        departmentId: financeDept.id,
+        yearMonth: currentYearMonth,
+      },
+    },
+    update: {},
+    create: {
+      departmentId: financeDept.id,
+      yearMonth: currentYearMonth,
+      budgetAmount: 20000,
+      usedAmount: 0,
+    },
+  })
+
+  await prisma.departmentBudget.upsert({
+    where: {
+      departmentId_yearMonth: {
+        departmentId: hrDept.id,
+        yearMonth: currentYearMonth,
+      },
+    },
+    update: {},
+    create: {
+      departmentId: hrDept.id,
+      yearMonth: currentYearMonth,
+      budgetAmount: 15000,
+      usedAmount: 0,
+    },
+  })
+
   console.log('种子数据创建完成!')
   console.log('测试账号 (密码均为 123456):')
   console.log('- 管理员: admin@company.com')
@@ -109,6 +160,11 @@ async function main() {
   console.log('- 财务: finance@company.com')
   console.log('- 技术部员工: employee1@company.com')
   console.log('- 人事部员工: employee2@company.com')
+  console.log('')
+  console.log(`已为 ${currentYearMonth} 月份初始化部门预算:`)
+  console.log('- 技术部: ¥50,000.00')
+  console.log('- 财务部: ¥20,000.00')
+  console.log('- 人事部: ¥15,000.00')
 }
 
 main()

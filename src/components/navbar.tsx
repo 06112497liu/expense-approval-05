@@ -13,6 +13,7 @@ import {
   User,
   PlusCircle,
   LayoutDashboard,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -90,6 +91,12 @@ export function Navbar() {
           label: '部门管理',
           icon: Building2,
           show: user.role === 'ADMIN',
+        },
+        {
+          href: '/admin/budgets',
+          label: '预算管理',
+          icon: Wallet,
+          show: user.role === 'ADMIN' || user.role === 'FINANCE',
         },
       ]
     : []

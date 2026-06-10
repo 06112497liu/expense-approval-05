@@ -2,9 +2,15 @@
 
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/permissions'
-import { getDepartmentManager, getFinanceUser, getExpenseReportById } from '@/lib/queries'
+import {
+  getDepartmentManager,
+  getFinanceUser,
+  getExpenseReportById,
+  getOrCreateDepartmentBudget,
+} from '@/lib/queries'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getCurrentYearMonth } from '@/lib/utils'
 
 export async function createExpenseReport(data: {
   title: string
@@ -219,8 +225,22 @@ export async function approveReport(reportId: number, comment?: string) {
     (a) => a.stepNumber > currentApproval.stepNumber && a.status === 'PENDING'
   )
 
+  const isFinanceApproval = currentApproval.role === 'FINANCE'
+  const departmentId = report.creator.departmentId
+
+  if (isFinanceApproval && departmentId) {
+    const yearMonth = getCurrentYearMonth()
+    const budget = await getOrCreateDepartmentBudget(departmentId, yearMonth)
+    const remainingBudget = budget.budgetAmount - budget.usedAmount
+    if (remainingBudget < report.totalAmount) {
+      throw new Error(
+        `预算不足。${report.creator.department?.name || '该部门'}当月预算剩余 ${remainingBudget.toFixed(2)} 元，当前报销金额 ${report.totalAmount.toFixed(2)} 元`
+      )
+    }
+  }
+
   if (nextApproval) {
-    await prisma.$transaction([
+    const operations: any[] = [
       prisma.approval.update({
         where: { id: currentApproval.id },
         data: {
@@ -235,9 +255,49 @@ export async function approveReport(reportId: number, comment?: string) {
           currentApproverId: nextApproval.approverId,
         },
       }),
-    ])
+    ]
+
+    if (isFinanceApproval && departmentId) {
+      const yearMonth = getCurrentYearMonth()
+      operations.push(
+        prisma.departmentBudget.update({
+          where: {
+            departmentId_yearMonth: {
+              departmentId,
+              yearMonth,
+            },
+          },
+          data: {
+            usedAmount: {
+              increment: report.totalAmount,
+            },
+          },
+        }),
+        prisma.budgetTransaction.create({
+          data: {
+            departmentBudget: {
+              connect: {
+                departmentId_yearMonth: {
+                  departmentId,
+                  yearMonth,
+                },
+              },
+            },
+            report: {
+              connect: { id: reportId },
+            },
+            amount: report.totalAmount,
+            type: 'DEDUCT',
+            description: `财务审批通过，扣除报销单「${report.title}」预算`,
+            operatorId: parseInt(user.id),
+          },
+        })
+      )
+    }
+
+    await prisma.$transaction(operations)
   } else {
-    await prisma.$transaction([
+    const operations: any[] = [
       prisma.approval.update({
         where: { id: currentApproval.id },
         data: {
@@ -253,7 +313,47 @@ export async function approveReport(reportId: number, comment?: string) {
           currentApproverId: null,
         },
       }),
-    ])
+    ]
+
+    if (isFinanceApproval && departmentId) {
+      const yearMonth = getCurrentYearMonth()
+      operations.push(
+        prisma.departmentBudget.update({
+          where: {
+            departmentId_yearMonth: {
+              departmentId,
+              yearMonth,
+            },
+          },
+          data: {
+            usedAmount: {
+              increment: report.totalAmount,
+            },
+          },
+        }),
+        prisma.budgetTransaction.create({
+          data: {
+            departmentBudget: {
+              connect: {
+                departmentId_yearMonth: {
+                  departmentId,
+                  yearMonth,
+                },
+              },
+            },
+            report: {
+              connect: { id: reportId },
+            },
+            amount: report.totalAmount,
+            type: 'DEDUCT',
+            description: `财务审批通过，扣除报销单「${report.title}」预算`,
+            operatorId: parseInt(user.id),
+          },
+        })
+      )
+    }
+
+    await prisma.$transaction(operations)
   }
 
   revalidatePath('/')

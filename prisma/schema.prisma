@@ -14,6 +14,36 @@ model Department {
   updatedAt DateTime @updatedAt
 
   employees  User[]
+  budgets    DepartmentBudget[]
+}
+
+model DepartmentBudget {
+  id            Int      @id @default(autoincrement())
+  departmentId  Int
+  yearMonth     String
+  budgetAmount  Float    @default(0)
+  usedAmount    Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  department   Department         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  transactions BudgetTransaction[]
+
+  @@unique([departmentId, yearMonth])
+}
+
+model BudgetTransaction {
+  id                Int      @id @default(autoincrement())
+  departmentBudgetId Int
+  reportId          Int
+  amount            Float
+  type              String
+  description       String?
+  operatorId        Int
+  createdAt         DateTime @default(now())
+
+  departmentBudget DepartmentBudget @relation(fields: [departmentBudgetId], references: [id], onDelete: Cascade)
+  report           ExpenseReport    @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
 model User {
@@ -44,10 +74,11 @@ model ExpenseReport {
   updatedAt         DateTime @updatedAt
   submittedAt       DateTime?
 
-  creator          User          @relation("ExpenseCreator", fields: [creatorId], references: [id])
-  currentApprover  User?         @relation("CurrentApprover", fields: [currentApproverId], references: [id])
+  creator          User              @relation("ExpenseCreator", fields: [creatorId], references: [id])
+  currentApprover  User?             @relation("CurrentApprover", fields: [currentApproverId], references: [id])
   items            ExpenseItem[]
   approvals        Approval[]
+  budgetTransactions BudgetTransaction[]
 }
 
 model ExpenseItem {

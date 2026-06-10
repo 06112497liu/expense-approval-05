@@ -25,6 +25,14 @@ export async function requireAdmin() {
   return user
 }
 
+export async function requireAdminOrFinance() {
+  const user = await requireAuth()
+  if (user.role !== 'ADMIN' && user.role !== 'FINANCE') {
+    redirect('/')
+  }
+  return user
+}
+
 export async function canViewExpenseReport(
   userId: number,
   userRole: string,
